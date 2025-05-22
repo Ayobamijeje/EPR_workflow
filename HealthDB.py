@@ -41,7 +41,6 @@ with engine.connect() as conn:
 	'''))
 
 
-	# Commit the transaction (SQLite in SQLAlchemy requires explicit commit)
 	conn.commit()
 	print("Table created successfully!")
 
@@ -57,17 +56,17 @@ with engine.connect() as conn:
 #    conn.commit()  # Save changes
 
 # Insert data into vitals table
-with engine.connect() as conn:
-	conn.execute(text('''
-		INSERT INTO vitals (patient_id, Blood_pressure, Heart_rate, Respiratory_rate, Oxygen_saturation, Temperature) VALUES
-        (1, '120/80', 75, 16, 98, 37),
-        (2, '100/50', 100, 22, 85, 38),
-        (3, '90/50', 105, 24, 90, 38),
-        (4, '100/60', 90, 22, 93, 36);
+#with engine.connect() as conn:
+#	conn.execute(text('''
+#		INSERT INTO vitals (patient_id, Blood_pressure, Heart_rate, Respiratory_rate, Oxygen_saturation, Temperature) VALUES
+#        (1, '120/80', 75, 16, 98, 37),
+#        (2, '100/50', 100, 22, 85, 38),
+#        (3, '90/50', 105, 24, 90, 38),
+#        (4, '100/60', 90, 22, 93, 36);
 
-    '''))
-	conn.commit()  
+ #   '''))
+#	conn.commit()  
 
-print("Data inserted successfully!")
+#print("Data inserted successfully!")
 
 

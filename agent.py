@@ -2,10 +2,12 @@ from dotenv import load_dotenv
 import os
 from PIL import Image
 import google.generativeai as genai
-#from image_classifier import image_prediction
+from image_classifier import image_prediction
 from google.api_core import retry
 from databasetools import database_enginee, get_tables, table_discription, execute_query
 import streamlit as st
+import tempfile
+
 
 
 
@@ -15,7 +17,7 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 genai.configure(api_key=GOOGLE_API_KEY)
 
-db_tools = [get_tables, table_discription, execute_query]
+db_tools = [get_tables, table_discription, execute_query, image_prediction]
 
 
 
@@ -28,6 +30,7 @@ You have access to the following tools to help guide your conversation:
   - list_tables: Lists the tables in the database.
   - describe_table: Provides the schema of the database.
   - execute_query: Executes SQL queries on the database.
+  - image_prediction for CXR prediction which can be Tuberculosis, Pneumonia or normal 
 
 The information from these tools may not be available immediately, but you should engage in continuous conversation using the tools and schema as templates, do not enforce this. If you need more information, prompt the user to provide it. However, avoid repeatedly asking for the same information.
 
@@ -58,6 +61,7 @@ If you are to provide a disclaimer about not being a medical expert, do so after
 Important notes:
 - Always verify the details of the patient's condition before suggesting a diagnosis.
 - If you're unsure about the diagnosis, ask follow-up questions.
+- After getting the vitals from the database, you must present it in table format
 - Engage the user with questions and use the database tools to gather the necessary information.
 """
 
@@ -67,21 +71,40 @@ model = genai.GenerativeModel(
     "models/gemini-1.5-flash-latest", tools=db_tools, system_instruction=instruction
 )
 
-retry_policy = {"retry": retry.Retry(predicate=retry.if_transient_error)}
-
 chat = model.start_chat(enable_automatic_function_calling=True)
+
+#st.session_state.chat.send_message(user_query)
+
+
 
 
 st.set_page_config(layout="wide")
 
 col1, col2 = st.columns([2, 3])  # Adjust ratio as needed
 
+with col1:
+    st.header("📊 Patient Vitals & CXR")
+    
+
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    if uploaded_file is not None:
+    	with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+    		tmp_file.write(uploaded_file.read())
+    		temp_path = tmp_file.name
+    		#image = Image.open(temp_path)
+    		st.image(temp_path, caption="Uploaded Image", use_container_width=True)
+    		#st.write(image_prediction(temp_path))
+    		#if st.button("Run Diagnosis"):
+    		#	user_query = f"Classify this image: {temp_path}"
+    		#	response = st.session_state.chat.send_message(user_query)
+    		#	st.write(response.text)
+
 with col2:
 	st.title("Interactive Clinical Decision support System ")
 
 
 	if "messages" not in st.session_state:
-		st.session_state.chat = model.start_chat(enable_automatic_function_calling=True)
+		st.session_state.chat = chat
 		st.session_state.messages = [{"role": "bot", "content": "Hi, how can I help?"}]
 
 
@@ -104,28 +127,23 @@ with col2:
 	    with st.chat_message("bot"):
 	        st.write(bot_reply)
 
+	if st.button("Run image"):
+		user_query = f"Classify this image: {temp_path}"
+		st.session_state.messages.append({"role": "user", "content": user_query})
+
+		with st.chat_message("user"):
+			st.write('analysis CXR')
+
+		response = st.session_state.chat.send_message(user_query)
+		bot_reply = response.text
+		st.session_state.messages.append({"role": "bot", "content": bot_reply})
+		with st.chat_message("bot"):
+			st.write(bot_reply)
 
 
 
-with col1:
-    st.header("📊 Patient Vitals & CXR")
-    
-    # Example: Display vitals
-    vitals = {
-        "Blood Pressure": "90/50 mmHg",
-        "Heart Rate": "105 bpm",
-        "Respiratory Rate": "24 breaths/min",
-        "Oxygen Saturation": "90%",
-        "Temperature": "38°C"
-    }
-    st.table(vitals)
 
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-	    image = Image.open(uploaded_file)
-	    
-	    # Display the image in the Streamlit app
-	    st.image(image, caption="Uploaded Image", use_container_width =True)
+
 
 
 
